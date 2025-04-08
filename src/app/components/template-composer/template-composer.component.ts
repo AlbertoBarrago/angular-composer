@@ -8,6 +8,7 @@ import { ComponentListComponent } from '../component-list/component-list.compone
 import { MockComponent } from '../../services/mock-library.service';
 import { MatDialog } from '@angular/material/dialog';
 import { MatDialogModule } from '@angular/material/dialog';
+import { ColumnSelectDialogComponent } from '../column-select-dialog/column-select-dialog.component';
 import { FormsModule } from '@angular/forms';
 import { MatFormFieldModule } from '@angular/material/form-field';
 import { MatInputModule } from '@angular/material/input';
@@ -39,12 +40,12 @@ import { ComponentEditDialog } from '../component-edit-dialog/component-edit-dia
         [class.dragover]="isDragOver"
         (dragenter)="isDragOver = true"
         (dragleave)="isDragOver = false"
+        (dragover)="$event.preventDefault()"
         cdkDropList
         id="preview-panel"
         [cdkDropListData]="droppedComponents"
         [cdkDropListConnectedTo]="['component-list']"
-        (cdkDropListDropped)="onDrop($event)"
-        [cdkDropListSortingDisabled]="false">
+        (cdkDropListDropped)="onDrop($event)">
         <h2>Template Preview</h2>
         
         <div *ngIf="droppedComponents.length === 0" class="empty-state">
@@ -52,104 +53,33 @@ import { ComponentEditDialog } from '../component-edit-dialog/component-edit-dia
           <p>Drag components here to build your template</p>
         </div>
 
-        <div *ngFor="let component of droppedComponents; let i = index" cdkDrag>
-          <!-- Header Container -->
-          <div *ngIf="component.id === 'header'"
-               class="container-zone"
-               cdkDropList
-               id="header-zone"
-               [cdkDropListData]="headerComponents"
-               [cdkDropListConnectedTo]="['component-list']"
-               (cdkDropListDropped)="onDrop($event)">
-            <div class="preview-item">
-              <div class="preview-item-header">
-                <mat-icon>{{ component.icon }}</mat-icon>
-                <span>{{ component.name }}</span>
-                <button mat-icon-button color="warn" (click)="removeComponent(i)">
-                  <mat-icon>delete</mat-icon>
-                </button>
-              </div>
-              <div class="preview-item-content" [innerHTML]="component.customContent || component.previewCode"></div>
-              <div class="preview-item-actions">
-                <button mat-button color="primary" (click)="openEditDialog(i)">
-                  <mat-icon>edit</mat-icon>
-                  Edit Content
-                </button>
-              </div>
-            </div>
-            <!-- Nested Components in Header -->
-            <div *ngFor="let nestedComp of headerComponents; let j = index" class="nested-component">
-              <div class="preview-item">
-                <div class="preview-item-header">
-                  <mat-icon>{{ nestedComp.icon }}</mat-icon>
-                  <span>{{ nestedComp.name }}</span>
-                  <button mat-icon-button color="warn" (click)="headerComponents.splice(j, 1)">
-                    <mat-icon>delete</mat-icon>
-                  </button>
-                </div>
-                <div class="preview-item-content" [innerHTML]="nestedComp.customContent || nestedComp.previewCode"></div>
-              </div>
-            </div>
+        <div *ngFor="let component of droppedComponents; let i = index" 
+          cdkDrag
+          [cdkDragData]="component"
+          class="preview-item"
+          [class.hover-highlight]="isHoveringComponent && hoverIndex === i"
+          (dragenter)="onDragEnter(i)"
+          (dragleave)="onDragLeave()"
+          (dragover)="$event.preventDefault(); updateSplitDirection($event, i)"
+          [cdkDragBoundary]="'.preview-panel'">
+          <div class="preview-item-header">
+            <mat-icon>{{ component.icon }}</mat-icon>
+            <span>{{ component.name }}</span>
+            <button mat-icon-button color="warn" (click)="removeComponent(i)">
+              <mat-icon>delete</mat-icon>
+            </button>
           </div>
-
-          <!-- Main Content Area -->
-          <div *ngIf="component.id !== 'header' && component.id !== 'footer'"
-               class="preview-item"
-               cdkDrag>
-            <div class="preview-item-header">
-              <mat-icon>{{ component.icon }}</mat-icon>
-              <span>{{ component.name }}</span>
-              <button mat-icon-button color="warn" (click)="removeComponent(i)">
-                <mat-icon>delete</mat-icon>
-              </button>
-            </div>
-            <div class="preview-item-content" [innerHTML]="component.customContent || component.previewCode"></div>
-            <div class="preview-item-actions">
-              <button mat-button color="primary" (click)="openEditDialog(i)">
-                <mat-icon>edit</mat-icon>
-                Edit Content
-              </button>
-            </div>
+          <div class="preview-item-content" [innerHTML]="component.customContent || component.previewCode"></div>
+          <div class="preview-item-actions">
+            <button mat-button color="primary" (click)="openEditDialog(i)">
+              <mat-icon>edit</mat-icon>
+              Edit Content
+            </button>
           </div>
-
-          <!-- Footer Container -->
-          <div *ngIf="component.id === 'footer'"
-               class="container-zone"
-               cdkDropList
-               id="footer-zone"
-               [cdkDropListData]="footerComponents"
-               [cdkDropListConnectedTo]="['component-list']"
-               (cdkDropListDropped)="onDrop($event)">
-            <div class="preview-item">
-              <div class="preview-item-header">
-                <mat-icon>{{ component.icon }}</mat-icon>
-                <span>{{ component.name }}</span>
-                <button mat-icon-button color="warn" (click)="removeComponent(i)">
-                  <mat-icon>delete</mat-icon>
-                </button>
-              </div>
-              <div class="preview-item-content" [innerHTML]="component.customContent || component.previewCode"></div>
-              <div class="preview-item-actions">
-                <button mat-button color="primary" (click)="openEditDialog(i)">
-                  <mat-icon>edit</mat-icon>
-                  Edit Content
-                </button>
-              </div>
-            </div>
-            <!-- Nested Components in Footer -->
-            <div *ngFor="let nestedComp of footerComponents; let j = index" class="nested-component">
-              <div class="preview-item">
-                <div class="preview-item-header">
-                  <mat-icon>{{ nestedComp.icon }}</mat-icon>
-                  <span>{{ nestedComp.name }}</span>
-                  <button mat-icon-button color="warn" (click)="footerComponents.splice(j, 1)">
-                    <mat-icon>delete</mat-icon>
-                  </button>
-                </div>
-                <div class="preview-item-content" [innerHTML]="nestedComp.customContent || nestedComp.previewCode"></div>
-              </div>
-            </div>
-          </div>
+          <div *ngIf="isHoveringComponent && hoverIndex === i" 
+            class="split-indicator" 
+            [class.left]="splitDirection === 'left'"
+            [class.right]="splitDirection === 'right'"></div>
         </div>
 
         <div *ngIf="droppedComponents.length > 0" class="export-button">
@@ -250,6 +180,84 @@ import { ComponentEditDialog } from '../component-edit-dialog/component-edit-dia
       border-radius: 4px;
       position: relative;
       transition: all 0.3s ease;
+      cursor: move;
+      user-select: none;
+    }
+
+    .preview-item:active {
+      cursor: grabbing;
+    }
+
+    .preview-item.hover-highlight {
+      border: 2px dashed #ffd700;
+      background: rgba(255, 215, 0, 0.05);
+      position: relative;
+    }
+
+    .split-indicator {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background-color: #ffd700;
+      z-index: 2;
+    }
+
+    .split-indicator.left {
+      left: -2px;
+    }
+
+    .split-indicator.right {
+      right: -2px;
+    }
+
+    .split-container {
+      display: grid;
+      gap: 20px;
+      margin: 16px 0;
+    }
+
+    .split-container[data-columns="2"] {
+      grid-template-columns: repeat(2, 1fr);
+    }
+
+    .split-container[data-columns="3"] {
+      grid-template-columns: repeat(3, 1fr);
+    }
+
+    .split-container[data-columns="4"] {
+      grid-template-columns: repeat(4, 1fr);
+    }
+
+    .left-column, .right-column {
+      flex: 1;
+      padding: 16px;
+      border: 1px solid #e0e0e0;
+      border-radius: 4px;
+      position: relative;
+    }
+
+    .split-indicator {
+      position: absolute;
+      top: 0;
+      bottom: 0;
+      width: 4px;
+      background-color: #ffd700;
+      z-index: 2;
+    }
+
+    .split-indicator.left {
+      left: -2px;
+    }
+
+    .split-indicator.right {
+      right: -2px;
+    }
+
+    .preview-item.hover-highlight {
+      border: 2px dashed #ffd700;
+      background: rgba(255, 215, 0, 0.05);
+      position: relative;
     }
 
     .preview-item:hover {
@@ -287,37 +295,67 @@ import { ComponentEditDialog } from '../component-edit-dialog/component-edit-dia
 })
 export class TemplateComposerComponent {
   isDragOver = false;
-  droppedComponents: (MockComponent & { customContent?: string; parentId?: string })[] = [];
-  headerComponents: (MockComponent & { customContent?: string })[] = [];
-  footerComponents: (MockComponent & { customContent?: string })[] = [];
+  isHoveringComponent = false;
+  hoverIndex = -1;
+  splitDirection: string = 'left';
+  droppedComponents: (MockComponent & { customContent?: string })[] = [];
 
   constructor(private dialog: MatDialog) { }
 
+  onDragEnter(index: number) {
+    this.isHoveringComponent = true;
+    this.hoverIndex = index;
+  }
+
+  onDragLeave() {
+    this.isHoveringComponent = false;
+    this.hoverIndex = -1;
+  }
+
   onDrop(event: CdkDragDrop<MockComponent[]>) {
     this.isDragOver = false;
+    this.isHoveringComponent = false;
+
     if (event.previousContainer === event.container) {
-      moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
-      return;
-    }
-
-    const component = { ...event.item.data };
-    const dropZoneId = event.container.id;
-
-    if (dropZoneId === 'header-zone' && component.id !== 'header') {
-      this.headerComponents.push(component);
-    } else if (dropZoneId === 'footer-zone' && component.id !== 'footer') {
-      this.footerComponents.push(component);
-    } else if (component.id === 'header' || component.id === 'footer') {
-      this.droppedComponents.push(component);
+      moveItemInArray(this.droppedComponents, event.previousIndex, event.currentIndex);
     } else {
-      this.droppedComponents.push(component);
+      const component = { ...event.item.data };
+
+      if (this.hoverIndex !== -1) {
+        const targetComponent = this.droppedComponents[this.hoverIndex];
+
+        if (component.category === 'Layout' || targetComponent.category === 'Layout') {
+          const dialogRef = this.dialog.open(ColumnSelectDialogComponent, {
+            width: '400px',
+            data: { direction: this.splitDirection }
+          });
+
+          dialogRef.afterClosed().subscribe(result => {
+            if (result) {
+              const columns = result.columns;
+              const splitContainer = `
+                <div class="split-container" data-columns="${columns}">
+                  ${Array(columns).fill('').map(() => '<div class="column"></div>').join('')}
+                </div>
+              `;
+
+              this.droppedComponents[this.hoverIndex] = {
+                ...targetComponent,
+                customContent: splitContainer
+              };
+            } else {
+              this.droppedComponents.splice(this.hoverIndex + 1, 0, component);
+            }
+          });
+        } else {
+          this.droppedComponents.splice(this.hoverIndex + 1, 0, component);
+        }
+      } else {
+        this.droppedComponents.push(component);
+      }
     }
 
-    // Open edit dialog for content sections
-    if (component.category === 'Layout') {
-      const index = this.droppedComponents.length - 1;
-      this.openEditDialog(index);
-    }
+    this.hoverIndex = -1;
   }
 
   removeComponent(index: number) {
@@ -341,8 +379,22 @@ export class TemplateComposerComponent {
     document.body.removeChild(a);
   }
 
+  updateSplitDirection(event: DragEvent, index: number) {
+    if (!this.isHoveringComponent || this.hoverIndex !== index) return;
+
+    const rect = (event.currentTarget as HTMLElement).getBoundingClientRect();
+    const mouseX = event.clientX - rect.left;
+    const threshold = rect.width / 2;
+
+    this.splitDirection = mouseX < threshold ? 'left' : 'right';
+  }
+
   openEditDialog(index: number) {
+    if (index < 0 || index >= this.droppedComponents.length) return;
+
     const component = this.droppedComponents[index];
+    if (!component) return;
+
     const dialogRef = this.dialog.open(ComponentEditDialog, {
       width: '600px',
       data: { content: component.customContent || component.previewCode }
