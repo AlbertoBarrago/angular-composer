@@ -3,9 +3,15 @@ import { CommonModule } from '@angular/common';
 import { MatCardModule } from '@angular/material/card';
 import { MatButtonModule } from '@angular/material/button';
 import { MatIconModule } from '@angular/material/icon';
-import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
+import { DragDropModule, CdkDragDrop, moveItemInArray } from '@angular/cdk/drag-drop';
 import { ComponentListComponent } from '../component-list/component-list.component';
 import { MockComponent } from '../../services/mock-library.service';
+import { MatDialog } from '@angular/material/dialog';
+import { MatDialogModule } from '@angular/material/dialog';
+import { FormsModule } from '@angular/forms';
+import { MatFormFieldModule } from '@angular/material/form-field';
+import { MatInputModule } from '@angular/material/input';
+import { ComponentEditDialog } from '../component-edit-dialog/component-edit-dialog.component';
 
 @Component({
   selector: 'app-template-composer',
@@ -16,7 +22,11 @@ import { MockComponent } from '../../services/mock-library.service';
     MatButtonModule,
     MatIconModule,
     DragDropModule,
-    ComponentListComponent
+    ComponentListComponent,
+    MatDialogModule,
+    FormsModule,
+    MatFormFieldModule,
+    MatInputModule
   ],
   template: `
     <div class="composer-container">
@@ -29,12 +39,12 @@ import { MockComponent } from '../../services/mock-library.service';
         [class.dragover]="isDragOver"
         (dragenter)="isDragOver = true"
         (dragleave)="isDragOver = false"
-        [class.dragover]="isDragOver"
         cdkDropList
         id="preview-panel"
         [cdkDropListData]="droppedComponents"
         [cdkDropListConnectedTo]="['component-list']"
-        (cdkDropListDropped)="onDrop($event)">
+        (cdkDropListDropped)="onDrop($event)"
+        [cdkDropListSortingDisabled]="false">
         <h2>Template Preview</h2>
         
         <div *ngIf="droppedComponents.length === 0" class="empty-state">
@@ -42,15 +52,104 @@ import { MockComponent } from '../../services/mock-library.service';
           <p>Drag components here to build your template</p>
         </div>
 
-        <div *ngFor="let component of droppedComponents; let i = index" class="preview-item">
-          <div class="preview-item-header">
-            <mat-icon>{{ component.icon }}</mat-icon>
-            <span>{{ component.name }}</span>
-            <button mat-icon-button color="warn" (click)="removeComponent(i)">
-              <mat-icon>delete</mat-icon>
-            </button>
+        <div *ngFor="let component of droppedComponents; let i = index" cdkDrag>
+          <!-- Header Container -->
+          <div *ngIf="component.id === 'header'"
+               class="container-zone"
+               cdkDropList
+               id="header-zone"
+               [cdkDropListData]="headerComponents"
+               [cdkDropListConnectedTo]="['component-list']"
+               (cdkDropListDropped)="onDrop($event)">
+            <div class="preview-item">
+              <div class="preview-item-header">
+                <mat-icon>{{ component.icon }}</mat-icon>
+                <span>{{ component.name }}</span>
+                <button mat-icon-button color="warn" (click)="removeComponent(i)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+              <div class="preview-item-content" [innerHTML]="component.customContent || component.previewCode"></div>
+              <div class="preview-item-actions">
+                <button mat-button color="primary" (click)="openEditDialog(i)">
+                  <mat-icon>edit</mat-icon>
+                  Edit Content
+                </button>
+              </div>
+            </div>
+            <!-- Nested Components in Header -->
+            <div *ngFor="let nestedComp of headerComponents; let j = index" class="nested-component">
+              <div class="preview-item">
+                <div class="preview-item-header">
+                  <mat-icon>{{ nestedComp.icon }}</mat-icon>
+                  <span>{{ nestedComp.name }}</span>
+                  <button mat-icon-button color="warn" (click)="headerComponents.splice(j, 1)">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </div>
+                <div class="preview-item-content" [innerHTML]="nestedComp.customContent || nestedComp.previewCode"></div>
+              </div>
+            </div>
           </div>
-          <div class="preview-item-content" [innerHTML]="component.previewCode"></div>
+
+          <!-- Main Content Area -->
+          <div *ngIf="component.id !== 'header' && component.id !== 'footer'"
+               class="preview-item"
+               cdkDrag>
+            <div class="preview-item-header">
+              <mat-icon>{{ component.icon }}</mat-icon>
+              <span>{{ component.name }}</span>
+              <button mat-icon-button color="warn" (click)="removeComponent(i)">
+                <mat-icon>delete</mat-icon>
+              </button>
+            </div>
+            <div class="preview-item-content" [innerHTML]="component.customContent || component.previewCode"></div>
+            <div class="preview-item-actions">
+              <button mat-button color="primary" (click)="openEditDialog(i)">
+                <mat-icon>edit</mat-icon>
+                Edit Content
+              </button>
+            </div>
+          </div>
+
+          <!-- Footer Container -->
+          <div *ngIf="component.id === 'footer'"
+               class="container-zone"
+               cdkDropList
+               id="footer-zone"
+               [cdkDropListData]="footerComponents"
+               [cdkDropListConnectedTo]="['component-list']"
+               (cdkDropListDropped)="onDrop($event)">
+            <div class="preview-item">
+              <div class="preview-item-header">
+                <mat-icon>{{ component.icon }}</mat-icon>
+                <span>{{ component.name }}</span>
+                <button mat-icon-button color="warn" (click)="removeComponent(i)">
+                  <mat-icon>delete</mat-icon>
+                </button>
+              </div>
+              <div class="preview-item-content" [innerHTML]="component.customContent || component.previewCode"></div>
+              <div class="preview-item-actions">
+                <button mat-button color="primary" (click)="openEditDialog(i)">
+                  <mat-icon>edit</mat-icon>
+                  Edit Content
+                </button>
+              </div>
+            </div>
+            <!-- Nested Components in Footer -->
+            <div *ngFor="let nestedComp of footerComponents; let j = index" class="nested-component">
+              <div class="preview-item">
+                <div class="preview-item-header">
+                  <mat-icon>{{ nestedComp.icon }}</mat-icon>
+                  <span>{{ nestedComp.name }}</span>
+                  <button mat-icon-button color="warn" (click)="footerComponents.splice(j, 1)">
+                    <mat-icon>delete</mat-icon>
+                  </button>
+                </div>
+                <div class="preview-item-content" [innerHTML]="nestedComp.customContent || nestedComp.previewCode"></div>
+              </div>
+            </div>
+          </div>
         </div>
 
         <div *ngIf="droppedComponents.length > 0" class="export-button">
@@ -86,6 +185,27 @@ import { MockComponent } from '../../services/mock-library.service';
       position: relative;
       z-index: 1;
       transition: all 0.3s ease;
+    }
+
+    .container-zone {
+      border: 2px dashed #e0e0e0;
+      border-radius: 4px;
+      padding: 16px;
+      margin: 16px 0;
+      min-height: 100px;
+      transition: all 0.3s ease;
+    }
+
+    .container-zone:hover {
+      border-color: #2196F3;
+      background: rgba(33, 150, 243, 0.04);
+    }
+
+    .nested-component {
+      margin-left: 24px;
+      margin-top: 8px;
+      border-left: 2px solid #e0e0e0;
+      padding-left: 16px;
     }
 
     .preview-panel.dragover {
@@ -167,16 +287,37 @@ import { MockComponent } from '../../services/mock-library.service';
 })
 export class TemplateComposerComponent {
   isDragOver = false;
-  droppedComponents: MockComponent[] = [];
+  droppedComponents: (MockComponent & { customContent?: string; parentId?: string })[] = [];
+  headerComponents: (MockComponent & { customContent?: string })[] = [];
+  footerComponents: (MockComponent & { customContent?: string })[] = [];
+
+  constructor(private dialog: MatDialog) { }
 
   onDrop(event: CdkDragDrop<MockComponent[]>) {
     this.isDragOver = false;
     if (event.previousContainer === event.container) {
+      moveItemInArray(event.container.data, event.previousIndex, event.currentIndex);
       return;
     }
 
-    const component = event.item.data;
-    this.droppedComponents.push({ ...component });
+    const component = { ...event.item.data };
+    const dropZoneId = event.container.id;
+
+    if (dropZoneId === 'header-zone' && component.id !== 'header') {
+      this.headerComponents.push(component);
+    } else if (dropZoneId === 'footer-zone' && component.id !== 'footer') {
+      this.footerComponents.push(component);
+    } else if (component.id === 'header' || component.id === 'footer') {
+      this.droppedComponents.push(component);
+    } else {
+      this.droppedComponents.push(component);
+    }
+
+    // Open edit dialog for content sections
+    if (component.category === 'Layout') {
+      const index = this.droppedComponents.length - 1;
+      this.openEditDialog(index);
+    }
   }
 
   removeComponent(index: number) {
@@ -185,11 +326,35 @@ export class TemplateComposerComponent {
 
   exportTemplate() {
     const template = this.droppedComponents
-      .map(component => component.previewCode)
+      .map(component => component.customContent || component.previewCode)
       .join('\n');
 
-    // For now, just log the template
-    console.log('Exported Template:', template);
-    // TODO: Implement actual file download or copying to clipboard
+    // Create a download link
+    const blob = new Blob([template], { type: 'text/html' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'template.html';
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  }
+
+  openEditDialog(index: number) {
+    const component = this.droppedComponents[index];
+    const dialogRef = this.dialog.open(ComponentEditDialog, {
+      width: '600px',
+      data: { content: component.customContent || component.previewCode }
+    });
+
+    dialogRef.afterClosed().subscribe(result => {
+      if (result) {
+        this.droppedComponents[index] = {
+          ...component,
+          customContent: result
+        };
+      }
+    });
   }
 }
