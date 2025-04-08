@@ -26,6 +26,10 @@ import { MockComponent } from '../../services/mock-library.service';
       
       <div 
         class="preview-panel"
+        [class.dragover]="isDragOver"
+        (dragenter)="isDragOver = true"
+        (dragleave)="isDragOver = false"
+        [class.dragover]="isDragOver"
         cdkDropList
         id="preview-panel"
         [cdkDropListData]="droppedComponents"
@@ -77,11 +81,16 @@ import { MockComponent } from '../../services/mock-library.service';
       background: white;
       border-radius: 8px;
       padding: 20px;
-      border: 2px dashed #ccc;
       min-height: 300px;
       overflow-y: auto;
       position: relative;
       z-index: 1;
+      transition: all 0.3s ease;
+    }
+
+    .preview-panel.dragover {
+      border: 2px dashed #2196F3;
+      background: rgba(33, 150, 243, 0.04);
     }
 
     .cdk-drag-preview {
@@ -117,8 +126,15 @@ import { MockComponent } from '../../services/mock-library.service';
     .preview-item {
       margin: 16px 0;
       padding: 16px;
-      border: 1px solid #eee;
+      border: 1px solid transparent;
       border-radius: 4px;
+      position: relative;
+      transition: all 0.3s ease;
+    }
+
+    .preview-item:hover {
+      border-color: #e0e0e0;
+      box-shadow: 0 2px 4px rgba(0,0,0,0.05);
     }
 
     .preview-item-header {
@@ -127,7 +143,14 @@ import { MockComponent } from '../../services/mock-library.service';
       gap: 8px;
       margin-bottom: 8px;
       padding-bottom: 8px;
-      border-bottom: 1px solid #eee;
+      border-bottom: 1px solid transparent;
+      opacity: 0;
+      transition: all 0.3s ease;
+    }
+
+    .preview-item:hover .preview-item-header {
+      opacity: 1;
+      border-bottom-color: #eee;
     }
 
     .preview-item-content {
@@ -143,9 +166,11 @@ import { MockComponent } from '../../services/mock-library.service';
   `]
 })
 export class TemplateComposerComponent {
+  isDragOver = false;
   droppedComponents: MockComponent[] = [];
 
   onDrop(event: CdkDragDrop<MockComponent[]>) {
+    this.isDragOver = false;
     if (event.previousContainer === event.container) {
       return;
     }
